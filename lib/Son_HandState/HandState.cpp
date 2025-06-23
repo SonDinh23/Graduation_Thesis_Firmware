@@ -1,8 +1,6 @@
 #include "HandState.h"
 
-HandState::HandState(uint8_t pminAngle, uint8_t pmaxAngle):
-	minAngle(pminAngle),
-	maxAngle(pmaxAngle) {
+HandState::HandState() {
 }
 
 void HandState::begin(void) {
@@ -23,35 +21,39 @@ void HandState::begin(void) {
         ina3221_2nd.setShuntResistance(i, 0.1);
     }
 
-    // Set a power valid alert to tell us if ALL channels are between the two limits:
-    ina3221_1st.setPowerValidLimits(3.0, 15.0);
-    ina3221_2nd.setPowerValidLimits(3.0, 15.0);
+	ina3221_1st.setAveragingMode(INA3221_AVG_16_SAMPLES);
+	ina3221_2nd.setAveragingMode(INA3221_AVG_16_SAMPLES);
 
-    pref.begin("hand-info", false);
+	pref.begin("hand-info", false);
 
     ESP32PWM::allocateTimer(0);
   	ESP32PWM::allocateTimer(1);
   	ESP32PWM::allocateTimer(2);
   	ESP32PWM::allocateTimer(3);
 
-    // set up servo channels
-    for (uint8_t i = 0; i < 5; i++) servoChannel[i].attach(pinServo[i]);
-    delay(500);
+	for (uint8_t i = 0; i < COUNT_SERVO; i++) {
+		servoChannel[i].attach(pinServo[i]);
+	}
+	delay(50);
+	
+	// // set up servo channels
+    // for (uint8_t i = 0; i < 5; i++) servoChannel[i].attach(pinServo[i]);
+    // delay(500);
 
-    minAngle = pref.getUShort("minAngle", MIN_ANGLE_DEFAULT);
-	maxAngle = pref.getUShort("maxAngle", MAX_ANGLE_DEFAULT);
+    // minAngle = pref.getUShort("minAngle", MIN_ANGLE_DEFAULT);
+	// maxAngle = pref.getUShort("maxAngle", MAX_ANGLE_DEFAULT);
 
-    Serial.printf("MinAngle: %d\n", minAngle);
-	Serial.printf("MaxAngle: %d\n", maxAngle);
+    // Serial.printf("MinAngle: %d\n", minAngle);
+	// Serial.printf("MaxAngle: %d\n", maxAngle);
 
-	startAngle = (minAngle + maxAngle)/2;
-    angle = startAngle;
-	Serial.printf("startAngle: %d\n", startAngle);
-	for (uint8_t i = 0; i < 5; i++) servoChannel[i].write(angle);
-    pwmValueMin = map(minAngle, 0, 180, DEFAULT_uS_LOW, DEFAULT_uS_HIGH);
-	pwmValueMax = map(maxAngle, 0, 180, DEFAULT_uS_LOW, DEFAULT_uS_HIGH);
-	Serial.printf("pwmValueMin: %d\n", pwmValueMin);
-	Serial.printf("pwmValueMax: %d\n", pwmValueMax);
+	// startAngle = (minAngle + maxAngle)/2;
+    // angle = startAngle;
+	// Serial.printf("startAngle: %d\n", startAngle);
+	// for (uint8_t i = 0; i < 5; i++) servoChannel[i].write(angle);
+    // pwmValueMin = map(minAngle, 0, 180, DEFAULT_uS_LOW, DEFAULT_uS_HIGH);
+	// pwmValueMax = map(maxAngle, 0, 180, DEFAULT_uS_LOW, DEFAULT_uS_HIGH);
+	// Serial.printf("pwmValueMin: %d\n", pwmValueMin);
+	// Serial.printf("pwmValueMax: %d\n", pwmValueMax);
 
     readSpeed();
 
@@ -150,13 +152,160 @@ void  HandState::readSpeed() {
 }
 
 void HandState::updateSensor(char pchar) {
-	
+	if (pchar == 'a')
+	{
+		lastMode = mode;
+		mode = Open;
+	}
+	else if (pchar == 'b')
+	{
+		lastMode = mode;
+		mode = Close;
+	}
+	else if (pchar == 'c')
+	{
+		lastMode = mode;
+		mode = Hold;
+	}
+	else if (pchar == 'd')
+	{
+		lastMode = mode;
+		mode = Change;
+	}
 }
 
 void HandState::update() {
+	detectMode();
 	setServo();
 }
 
 void HandState::setServo() {
+	int CurrentThumbver = ina3221_1st.getCurrentAmps(0)* 1000;
+    int CurrentThumbhor = ina3221_1st.getCurrentAmps(1)* 1000;
+    int CurrentIndex = ina3221_1st.getCurrentAmps(2)* 1000;
+    int CurrentMid = ina3221_2nd.getCurrentAmps(0)* 1000;
+    int CurrentRing = ina3221_2nd.getCurrentAmps(1)* 1000;
+    Serial.print(CurrentThumbver);
+    Serial.print(", ");
+    Serial.print(CurrentThumbhor);
+    Serial.print(", ");
+    Serial.print(CurrentIndex);
+    Serial.print(", ");
+    Serial.print(CurrentMid);
+    Serial.print(", ");
+    Serial.print(CurrentRing);
+    Control_Finger(0,maxUs_Thumbver[grip], minUs_Thumbver, minStep_Count, maxStep_Count/2, CurrentThumbver);
+    Control_Finger(1,maxUs_Thumbhor, minUs_Thumbhor, maxStep_Count/2, maxStep_Count, CurrentThumbhor);
+    Control_Finger(2,maxUs_Index, minUs_Index, minStep_Count, maxStep_Count, CurrentIndex);
+    Control_Finger(3,maxUs_Mid, minUs_Mid, minStep_Count, maxStep_Count, CurrentMid);
+    Control_Finger(4,maxUs_Ring, minUs_Ring, minStep_Count, maxStep_Count, CurrentRing);
+}
 
+void HandState::detectMode() {
+	if (Fingers[1].Flag_threshold && Fingers[2].Flag_threshold && Fingers[3].Flag_threshold && Fingers[4].Flag_threshold)
+		mode = Hold;
+
+	switch (mode)
+	{
+	case Close:
+		Serial.println("Close:");
+		if (StepControl < maxStep_Count)
+			StepControl = StepControl + stepUs;
+		flag_ChangeGrip = true;
+		break;
+	case Open:
+		Serial.println("open:");
+		if (StepControl > minStep_Count)
+			StepControl = StepControl - stepUs;
+		Fingers[1].Flag_threshold = Fingers[2].Flag_threshold = Fingers[3].Flag_threshold = Fingers[4].Flag_threshold = false;
+		flag_ChangeGrip = true;
+		break;
+	case Hold:
+		Serial.println("hold:");
+		flag_ChangeGrip = true;
+		Fingers[1].Flag_threshold = Fingers[2].Flag_threshold = Fingers[3].Flag_threshold = Fingers[4].Flag_threshold = false;
+		break;
+	case Change:
+		Serial.println("Change Grip");
+		if (flag_ChangeGrip)
+		{
+			grip = (grip + 1) % 3;
+			if (grip == 0)
+			{
+				stepChange = stepUs;
+			}
+			else if (grip == 1)
+			{
+				Fingers[4].state = 3;
+			}
+			else if (grip == 2)
+			{
+				Fingers[3].state = 3;
+			}
+			flag_ChangeGrip = false;
+			mode = lastMode;
+			lastMode = Change;
+		}
+		break;
+	}	
+}
+
+void HandState::Control_Finger(int Finger,int max, int min, int min_IN, int max_IN,  int Current_sensor) {
+  int StepControl_inFcn = constrain(StepControl, min_IN, max_IN);
+  float AngleControl = mapFloat(StepControl_inFcn,min_IN,max_IN,min,max);
+  switch(Fingers[Finger].state){
+    case 0:
+    Fingers[Finger].valueAngleCurrent = AngleControl;
+    servoChannel[Finger].writeMicroseconds(Fingers[Finger].valueAngleCurrent);
+    if( Current_sensor  <= Current_Threshold[stepUs-1][Finger]){
+      Fingers[Finger].state = 1;
+      Fingers[Finger].Flag_threshold = true;
+    }
+    break;
+    case 1:
+    if(Current_sensor <= Current_Threshold[stepUs-1][Finger] - 50){
+      Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent <= min ? min : Fingers[Finger].valueAngleCurrent - stepUs;
+      servoChannel[Finger].writeMicroseconds(Fingers[Finger].valueAngleCurrent);
+    }
+    else Fingers[Finger].state = 2;
+    break;
+    case 2:
+    if(mode == Open && AngleControl <=  Fingers[Finger].valueAngleCurrent) Fingers[Finger].state = 0;
+    else servoChannel[Finger].writeMicroseconds(Fingers[Finger].valueAngleCurrent);
+    break;
+    case 3:
+    if(grip > 0)
+    {
+      if(Fingers[Finger].Flag_stateGrip_1)
+      {
+        if(StepControl <= minStep_Count){
+          Fingers[Finger].valueAngleCurrent = min;
+          Fingers[Finger].Flag_stateGrip_1 = false;
+          break;
+        }
+        Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent <= min ? min : Fingers[Finger].valueAngleCurrent - stepUs;
+      }
+      else{
+        Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent >= max ? max : Fingers[Finger].valueAngleCurrent + stepUs;
+      }
+    }
+    else{
+        if(StepControl <= minStep_Count){
+          Fingers[Finger].Flag_stateGrip_2 = false;
+      }
+      if(!Fingers[Finger].Flag_stateGrip_2){
+        if(Fingers[Finger].valueAngleCurrent <= AngleControl){
+          Fingers[Finger].Flag_stateGrip_1 = true;
+          Fingers[Finger].Flag_stateGrip_2 = true;
+          Fingers[Finger].valueAngleCurrent = AngleControl;
+          Fingers[Finger].state = 0;
+          break;
+        }
+        Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent <= min ? min : Fingers[Finger].valueAngleCurrent - stepUs;
+        
+      }
+    }
+    servoChannel[Finger].writeMicroseconds(Fingers[Finger].valueAngleCurrent);
+    break;
+  }
 }

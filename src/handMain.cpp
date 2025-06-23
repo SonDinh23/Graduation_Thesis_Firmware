@@ -117,39 +117,56 @@ void ControlOp(void* pParamter) {
 void setup() {
   Serial.begin(115200);
   delay(50);
+
   handState.begin();
-  peripheral.begin(getSlaverAddr);
-  getSlaverAddr();
+  // peripheral.begin(getSlaverAddr);
+  // getSlaverAddr();
 
-  central.begin();
-  lastTimeScanBLE = millis();
-  lastTimeAdvBLE = millis();
+  // central.begin();
+  // lastTimeScanBLE = millis();
+  // lastTimeAdvBLE = millis();
 
-  xTaskCreatePinnedToCore(BleMasterOp, "BleMasterOp", 7000, NULL, 1, &task_handle_ble_master, 0);
-  xTaskCreatePinnedToCore(ControlOp, "ControlOp", 7000, NULL, 7, &task_handle_control, 1);
+  // xTaskCreatePinnedToCore(BleMasterOp, "BleMasterOp", 7000, NULL, 1, &task_handle_ble_master, 0);
+  // xTaskCreatePinnedToCore(ControlOp, "ControlOp", 7000, NULL, 7, &task_handle_control, 1);
   Serial.println("Start");
 }
 
 void loop() {
-  static hand_status_t lastHandStatus = STATE_NONE;
-  hand_status_t handStatus = handState.getHandState();
 
-  if (handStatus != lastHandStatus) {
-    lastHandStatus = handStatus;
-    Serial.printf("Change task: %d\n", handStatus);
-    switch (handStatus) {
-      case STATE_NORMAL:
-        vTaskResume(task_handle_ble_master);
-        vTaskResume(task_handle_control);
-        break;
-      case STATE_OTA:
-          vTaskSuspend(task_handle_ble_master);
-          vTaskSuspend(task_handle_control);
-          BLEDevice::getScan()->stop();
-        break;
-      default:
-        break;
+  if (Serial.available()) {
+    char pchar = Serial.read();
+    if (pchar == 'a' || pchar == 'b' || pchar == 'c' || pchar == 'd') {
+      handState.updateSensor(pchar);
+      Serial.printf("Received command: %c\n", pchar);
+    } else {
+      Serial.printf("Unknown command: %c\n", pchar);
     }
-    delay(50);
   }
+  
+  handState.update(); // Update hand state
+  // handState.updateSensor(central.cSensor);
+
+
+
+  // static hand_status_t lastHandStatus = STATE_NONE;
+  // hand_status_t handStatus = handState.getHandState();
+
+  // if (handStatus != lastHandStatus) {
+  //   lastHandStatus = handStatus;
+  //   Serial.printf("Change task: %d\n", handStatus);
+  //   switch (handStatus) {
+  //     case STATE_NORMAL:
+  //       vTaskResume(task_handle_ble_master);
+  //       vTaskResume(task_handle_control);
+  //       break;
+  //     case STATE_OTA:
+  //         vTaskSuspend(task_handle_ble_master);
+  //         vTaskSuspend(task_handle_control);
+  //         BLEDevice::getScan()->stop();
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  //   delay(50);
+  // }
 }

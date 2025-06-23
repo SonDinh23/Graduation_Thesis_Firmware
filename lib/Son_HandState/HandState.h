@@ -12,33 +12,70 @@
 #define LED_PIN   					    4
 #define LED_COUNT 					    2
 
-#define IDLE_CONSTANT				    50		//time to enter resting state
-#define CURRENT_THRESHOLD 			    200			
-#define CURRENT_THRESHOLD_MAX 		    300			
-#define CURRENT_THRESHOLD_AVG 		    275	
-#define CURRENT_MAX_TEST			    300 //close
-#define CURRENT_MIN_TEST			    300 //open
+#define SvoThumbverPin                  16
+#define SvoThumbhorPin                  17
+#define SvoIndexPin                     5
+#define SvoMiddlePin                    18
+#define SvoRingPin                      19
 
-#define MIN_ANGLE_DEFAULT    		    67
-#define MAX_ANGLE_DEFAULT    		    101
+#define minUs_Thumbver                  1500     // Range Control of thumb finger
+#define maxUs_Thumbver_Grip0            650
+#define maxUs_Thumbver_Grip1            700
+#define maxUs_Thumbver_Grip2            825
 
-#define ADDRESS_INA3221_1ST             0x40
-#define ADDRESS_INA3221_2ND             0x41
+#define minUs_Thumbhor                  625    // Range Control of Little finger
+#define maxUs_Thumbhor                  2500
+
+#define minUs_Index                     625     // Range Control of Index finger
+#define maxUs_Index                     2500
+
+#define minUs_Mid                       625       // Range Control of Middle finger
+#define maxUs_Mid                       2500
+
+#define minUs_Ring                      700      // Range Control of Ring finger
+#define maxUs_Ring                      2500
+
+#define minStep_Count                   0     // general Step Control
+#define maxStep_Count                   1500
+
+#define ADDRESS_INA3221_1ST             0x41
+#define ADDRESS_INA3221_2ND             0x40
 
 #define COUNT_SERVO                      5
 
+typedef enum {
+  Close,
+  Open,
+  Hold,
+  Change
+}Mode;
+
+typedef enum 
+{
+    THUMBVER = 0,
+    THUMBHOR = 1,
+    INDEX = 2,
+    MIDDLE = 3,
+    RING = 4
+}FingerName;
+
+typedef enum {
+    SPEED_US_LV1 = 1,
+    SPEED_US_LV2 = 2,
+    SPEED_US_LV3 = 3,
+}speedUS;
 typedef enum {
 	STATE_NONE 		= 0,
 	STATE_NORMAL 	= 1,
 	STATE_OTA 		= 2,
 }hand_status_t;
 
-const uint8_t pinServo[COUNT_SERVO] = {32, 33, 25, 26, 27}; // pin for servo
+const uint8_t pinServo[COUNT_SERVO] = {SvoThumbverPin, SvoThumbhorPin, SvoIndexPin, SvoMiddlePin, SvoRingPin}; // pin for servo
 
 class HandState
 {
 	public:
-        HandState(uint8_t pminAngle = MIN_ANGLE_DEFAULT, uint8_t pmaxAngle = MAX_ANGLE_DEFAULT);
+        HandState();
         void begin(void);
         void updateSensor(char pchar);
         void update();
@@ -62,6 +99,32 @@ class HandState
         Adafruit_INA3221 ina3221_2nd;
 
         Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+        void Control_Finger(int Finger,int max, int min, int min_IN, int max_IN,  int Current_sensor);
+        typedef struct 
+        {
+            bool Flag_threshold = false;
+            bool Flag_stateGrip_1 = true;
+            bool Flag_stateGrip_2 = true;
+            float valueAngleCurrent;
+            uint8_t state = 0;
+            uint8_t delayThreshold;
+        }StateFinger;
+
+        uint16_t StepControl = 0;
+        uint8_t stepUs = 2;
+        uint8_t grip = 0;
+        uint8_t stepChange;
+        bool flag_ChangeGrip = true;
+        int maxUs_Thumbver[3] = {maxUs_Thumbver_Grip0, maxUs_Thumbver_Grip1, maxUs_Thumbver_Grip2};
+        int Current_Threshold[3][5] = {
+            {-500, -200, -150, -200, -200},
+            {-500, -300, -210, -300, -250},
+            {-500, -320, -280, -350, -300}};
+
+        Mode mode = Open;
+        Mode lastMode = Hold;
+        StateFinger Fingers[5];
 
         hand_status_t handStatus = STATE_NORMAL;
 
@@ -88,6 +151,8 @@ class HandState
 		bool isConnect = false;							//state BLE
 
         void setServo();
+
+        void detectMode();
 
         void readSpeed();
 };

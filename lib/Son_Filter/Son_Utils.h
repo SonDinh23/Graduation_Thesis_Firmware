@@ -23,4 +23,8 @@ static uint16_t floatToHaft(float num) {
   return ((num_32bit>>16)&0x8000)|((((num_32bit&0x7f800000)-0x38000000)>>13)&0x7c00)|((num_32bit>>13)&0x03ff);
 }
 
+#define mapFloat(x, in_min, in_max, out_min, out_max) \
+  ((x - (in_min)) * ((out_max) - (out_min)) / ((in_max) - (in_min)) + (out_min))
+
+
 #endif
