@@ -32,7 +32,7 @@ void HandState::begin(void) {
   	ESP32PWM::allocateTimer(3);
 
 	for (uint8_t i = 0; i < COUNT_SERVO; i++) {
-		servoChannel[i].attach(pinServo[i]);
+		servoChannel[i].attach(pinServo[i],500,2500);
 	}
 	delay(50);
 	
@@ -202,9 +202,27 @@ void HandState::setServo() {
 }
 
 void HandState::detectMode() {
-	if (Fingers[1].Flag_threshold && Fingers[2].Flag_threshold && Fingers[3].Flag_threshold && Fingers[4].Flag_threshold)
-		mode = Hold;
-
+	if (Fingers[1].Flag_threshold && Fingers[2].Flag_threshold && Fingers[3].Flag_threshold && Fingers[4].Flag_threshold) mode = Hold;
+	if (StepControl <= minStep_Count && flagChange)
+	{
+		grip = (grip + 1) % 3;
+		if (grip == 0)
+		{
+			Fingers[3].Flag_stateGrip = Fingers[4].Flag_stateGrip = false;
+		}
+		else if (grip == 1)
+		{
+			Fingers[4].state = 3;
+			Fingers[4].Flag_stateGrip = true;
+		}
+		else if (grip == 2)
+		{
+			Fingers[3].state = 3;
+			Fingers[3].Flag_stateGrip = true;
+		}
+		flagChange = false;
+	}
+	
 	switch (mode)
 	{
 	case Close:
@@ -227,25 +245,10 @@ void HandState::detectMode() {
 		break;
 	case Change:
 		Serial.println("Change Grip");
-		if (flag_ChangeGrip)
-		{
-			grip = (grip + 1) % 3;
-			if (grip == 0)
-			{
-				stepChange = stepUs;
-			}
-			else if (grip == 1)
-			{
-				Fingers[4].state = 3;
-			}
-			else if (grip == 2)
-			{
-				Fingers[3].state = 3;
-			}
-			flag_ChangeGrip = false;
+			flagChange = true;
+			flag_ChangeGrip = true;
 			mode = lastMode;
 			lastMode = Change;
-		}
 		break;
 	}	
 }
@@ -274,36 +277,17 @@ void HandState::Control_Finger(int Finger,int max, int min, int min_IN, int max_
     else servoChannel[Finger].writeMicroseconds(Fingers[Finger].valueAngleCurrent);
     break;
     case 3:
-    if(grip > 0)
+    if(Fingers[Finger].Flag_stateGrip)
     {
-      if(Fingers[Finger].Flag_stateGrip_1)
-      {
-        if(StepControl <= minStep_Count){
-          Fingers[Finger].valueAngleCurrent = min;
-          Fingers[Finger].Flag_stateGrip_1 = false;
-          break;
-        }
-        Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent <= min ? min : Fingers[Finger].valueAngleCurrent - stepUs;
-      }
-      else{
         Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent >= max ? max : Fingers[Finger].valueAngleCurrent + stepUs;
-      }
     }
     else{
-        if(StepControl <= minStep_Count){
-          Fingers[Finger].Flag_stateGrip_2 = false;
-      }
-      if(!Fingers[Finger].Flag_stateGrip_2){
-        if(Fingers[Finger].valueAngleCurrent <= AngleControl){
-          Fingers[Finger].Flag_stateGrip_1 = true;
-          Fingers[Finger].Flag_stateGrip_2 = true;
-          Fingers[Finger].valueAngleCurrent = AngleControl;
-          Fingers[Finger].state = 0;
-          break;
-        }
-        Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent <= min ? min : Fingers[Finger].valueAngleCurrent - stepUs;
-        
-      }
+		if(Fingers[Finger].valueAngleCurrent <= AngleControl){
+			Fingers[Finger].valueAngleCurrent = AngleControl;
+			Fingers[Finger].state = 0;
+			break;
+		}
+		Fingers[Finger].valueAngleCurrent = Fingers[Finger].valueAngleCurrent <= min ? min : Fingers[Finger].valueAngleCurrent - stepUs;
     }
     servoChannel[Finger].writeMicroseconds(Fingers[Finger].valueAngleCurrent);
     break;

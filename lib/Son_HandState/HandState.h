@@ -12,11 +12,11 @@
 #define LED_PIN   					    4
 #define LED_COUNT 					    2
 
-#define SvoThumbverPin                  16
-#define SvoThumbhorPin                  17
-#define SvoIndexPin                     5
-#define SvoMiddlePin                    18
-#define SvoRingPin                      19
+#define SvoThumbverPin                  32
+#define SvoThumbhorPin                  33
+#define SvoIndexPin                     25
+#define SvoMiddlePin                    26
+#define SvoRingPin                      27
 
 #define minUs_Thumbver                  1500     // Range Control of thumb finger
 #define maxUs_Thumbver_Grip0            650
@@ -38,8 +38,8 @@
 #define minStep_Count                   0     // general Step Control
 #define maxStep_Count                   1500
 
-#define ADDRESS_INA3221_1ST             0x41
-#define ADDRESS_INA3221_2ND             0x40
+#define ADDRESS_INA3221_1ST             0x40
+#define ADDRESS_INA3221_2ND             0x41
 
 #define COUNT_SERVO                      5
 
@@ -104,17 +104,16 @@ class HandState
         typedef struct 
         {
             bool Flag_threshold = false;
-            bool Flag_stateGrip_1 = true;
-            bool Flag_stateGrip_2 = true;
+            bool Flag_stateGrip = true;
             float valueAngleCurrent;
             uint8_t state = 0;
             uint8_t delayThreshold;
         }StateFinger;
 
         uint16_t StepControl = 0;
-        uint8_t stepUs = 2;
+        speedUS stepUs = SPEED_US_LV2;
         uint8_t grip = 0;
-        uint8_t stepChange;
+        bool flagChange = false;
         bool flag_ChangeGrip = true;
         int maxUs_Thumbver[3] = {maxUs_Thumbver_Grip0, maxUs_Thumbver_Grip1, maxUs_Thumbver_Grip2};
         int Current_Threshold[3][5] = {
