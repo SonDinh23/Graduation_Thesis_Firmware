@@ -11,7 +11,6 @@
 #include "BLEServiceManager.h"
 #include "EMGSensor.h"
 
-#define SIGNAL_CHAR_UUID									"ebbb06e2-e254-4989-9555-a7fc9ca8f5c4"
 #define SETTING_CHAR_UUID								    "39b2df5b-b7d4-48c6-afd2-e0095d4a999c"
 #define STATE_CONTROL_CHAR_UUID						        "22e5bbd9-62d8-45eb-9ffd-4a2b88cd6c3a"
 #define BATTERY_CHAR_UUID									"d23b3d36-e178-4528-af4d-7e8f9139aa20"

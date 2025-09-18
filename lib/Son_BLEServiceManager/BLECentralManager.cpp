@@ -83,12 +83,12 @@ void BLECentralManager::controlNotifyCallback (NimBLERemoteCharacteristic* pBLER
   switch (*pData)
   {
     case 1: cSensor = 'a'; break;
-    case 2: cSensor = 'b'; break;
-    case 3: cSensor = 'c'; break;
+    case 2: cSensor = 'c'; break;
+    case 3: cSensor = 'b'; break;
     case 4: cSensor = 'd'; break;
-    default: cSensor = 'b'; break;
+    default: cSensor = 'c'; break;
   }
-  Serial.println(cSensor);
+  // Serial.println(cSensor);
 }
 
 bool BLECentralManager::equals(const uint8_t *_addBLE) {

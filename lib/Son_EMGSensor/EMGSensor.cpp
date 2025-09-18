@@ -14,6 +14,18 @@ EMGSensor::EMGSensor(MCP3208 &_adc, Adafruit_NeoPixel &_pixels, BuzzerMusic &_bu
 	buzzer(&_buzzer) {
 }
 
+void EMGSensor::testSensor() {
+	sensor[0] = adc.read(MCP3208::Channel::SINGLE_4);
+	sensor[1] = adc.read(MCP3208::Channel::SINGLE_3);
+	sensor[2] = adc.read(MCP3208::Channel::SINGLE_0);
+	sensor[3] = adc.read(MCP3208::Channel::SINGLE_6);
+	sensor[4] = adc.read(MCP3208::Channel::SINGLE_7);
+	sensor[5] = adc.read(MCP3208::Channel::SINGLE_5);
+	
+	Serial.printf("Sensor: %d\t%d\t%d\t%d\t%d\t%d\n", sensor[0], sensor[1], sensor[2], sensor[3], sensor[4], sensor[5]);
+	
+}
+
 bool EMGSensor::begin() {
 	buzzer->playSound(play_startup);
 	for (uint8_t i = 0; i < 8; i++) {
@@ -38,7 +50,6 @@ bool EMGSensor::begin() {
 					restoreThresholdLine();
 				}
 			} else restoreThresholdLine();
-			Serial.printf("ThresholdLine: %d, %d, %d, %d\n", thresholdLine[0], thresholdLine[1], thresholdLine[2], thresholdLine[3]);
 			break;
 
 		case EMG_CONTROL_SPIDER:
@@ -79,11 +90,11 @@ int8_t EMGSensor::sync(bool isStreamBLE) {
 	filterSensor();
 	switch (emgControl) {
 		case EMG_CONTROL_LINE:
-			syncLine();
+			syncLine(isStreamBLE);
 			break;
 		
 		case EMG_CONTROL_SPIDER:
-			syncSpider();
+			syncSpider(isStreamBLE);
 			break;
 
 		default:
@@ -93,14 +104,15 @@ int8_t EMGSensor::sync(bool isStreamBLE) {
 }
 
 void EMGSensor::syncLine(bool isStreamBLE) {
-	float output = data[0] + data[1] + data[2];
+	float output = data[0] + data[1] + data[2] + data[3] + data[4] + data[5];
 	if (output > thresholdLine[3]) stateControl = gripControl;
 	else if (output > thresholdLine[2]) stateControl = close;
 	else if (output > thresholdLine[1]) stateControl = hold;
 	else stateControl = open;
 
 	if (isStreamBLE) {
-		memcpy((void*)buffer, (void*) data, SIZE_ONE_PACKET_REV);
+		// memcpy((void*)buffer, (void*) data, SIZE_ONE_PACKET_REV);
+		converHaftFloat();
 	}else {
 		if (	data[0] > THRESHOLD_MAX && data[1] > THRESHOLD_MAX && data[2] > THRESHOLD_MAX
 			&& 	data[3] > THRESHOLD_MAX && data[4] > THRESHOLD_MAX && data[5] > THRESHOLD_MAX) {
@@ -190,11 +202,11 @@ void EMGSensor::firstReadSensor() {
 
 void EMGSensor::readSensor() {
 	static uint32_t lastTimeCycle = micros();
-	sensor[0] = adc.read(MCP3208::Channel::SINGLE_0);
-	sensor[1] = adc.read(MCP3208::Channel::SINGLE_1);
-	sensor[2] = adc.read(MCP3208::Channel::SINGLE_2);
-	sensor[3] = adc.read(MCP3208::Channel::SINGLE_3);
-	sensor[4] = adc.read(MCP3208::Channel::SINGLE_4);
+	sensor[0] = adc.read(MCP3208::Channel::SINGLE_4);
+	sensor[1] = adc.read(MCP3208::Channel::SINGLE_3);
+	sensor[2] = adc.read(MCP3208::Channel::SINGLE_0);
+	sensor[3] = adc.read(MCP3208::Channel::SINGLE_6);
+	sensor[4] = adc.read(MCP3208::Channel::SINGLE_7);
 	sensor[5] = adc.read(MCP3208::Channel::SINGLE_5);
 	
 	// Serial.printf("%d\t%d\t%d\t%d\t%d\t%d\n", sensor[0], sensor[1], sensor[2], sensor[3], sensor[4], sensor[5]);
@@ -205,7 +217,7 @@ void EMGSensor::readSensor() {
 void EMGSensor::filterSensor() {
 	for (uint8_t i = 0; i < CHANELS; i++) {
 		valueAbs[i] = abs(ftHighSensor[i].highpass(sensor[i]));
-		UTILS_LOW_PASS_FILTER_2(value[i], valueAbs[i], 0.005, 0.05);
+		UTILS_LOW_PASS_FILTER_2(value[i], valueAbs[i], 0.003, 0.03);
 	}
 	data[0] = filter0.updateEstimate(value[0]);
 	data[1] = filter1.updateEstimate(value[1]);
@@ -297,6 +309,7 @@ uint16_t *EMGSensor::getThresholdLine() {
 
 void EMGSensor::setThresholdLine(uint16_t _threshold[]) {
     memcpy((void*)thresholdLine, (void*)_threshold, sizeof(thresholdLine));
+	pref.putBytes("thresholdLine", thresholdLine, sizeof(thresholdLine));
 }
 
 void EMGSensor::restoreThresholdLine() {
@@ -317,6 +330,7 @@ void EMGSensor::setThresholdSpider(uint32_t grip, float _threshold[]) {
       Serial.printf("%.4f\t", thresholdSpider[grip][i]);
     }
     Serial.println();
+	pref.putBytes("thresholdSpider", thresholdSpider, sizeof(thresholdSpider));
 }
 
 void EMGSensor::restoreThresholdSpider() {

@@ -185,15 +185,15 @@ void HandState::setServo() {
     int CurrentIndex = ina3221_1st.getCurrentAmps(2)* 1000;
     int CurrentMid = ina3221_2nd.getCurrentAmps(0)* 1000;
     int CurrentRing = ina3221_2nd.getCurrentAmps(1)* 1000;
-    Serial.print(CurrentThumbver);
-    Serial.print(", ");
-    Serial.print(CurrentThumbhor);
-    Serial.print(", ");
-    Serial.print(CurrentIndex);
-    Serial.print(", ");
-    Serial.print(CurrentMid);
-    Serial.print(", ");
-    Serial.print(CurrentRing);
+    // Serial.print(CurrentThumbver);
+    // Serial.print(", ");
+    // Serial.print(CurrentThumbhor);
+    // Serial.print(", ");
+    // Serial.print(CurrentIndex);
+    // Serial.print(", ");
+    // Serial.print(CurrentMid);
+    // Serial.print(", ");
+    // Serial.print(CurrentRing);
     Control_Finger(0,maxUs_Thumbver[grip], minUs_Thumbver, minStep_Count, maxStep_Count/2, CurrentThumbver);
     Control_Finger(1,maxUs_Thumbhor, minUs_Thumbhor, maxStep_Count/2, maxStep_Count, CurrentThumbhor);
     Control_Finger(2,maxUs_Index, minUs_Index, minStep_Count, maxStep_Count, CurrentIndex);
@@ -226,27 +226,27 @@ void HandState::detectMode() {
 	switch (mode)
 	{
 	case Close:
-		Serial.println("Close:");
+		// Serial.println("Close:");
 		if (StepControl < maxStep_Count)
 			StepControl = StepControl + stepUs;
-		flag_ChangeGrip = true;
+		// flag_ChangeGrip = true;
 		break;
 	case Open:
-		Serial.println("open:");
+		// Serial.println("open:");
 		if (StepControl > minStep_Count)
 			StepControl = StepControl - stepUs;
 		Fingers[1].Flag_threshold = Fingers[2].Flag_threshold = Fingers[3].Flag_threshold = Fingers[4].Flag_threshold = false;
-		flag_ChangeGrip = true;
+		// flag_ChangeGrip = true;
 		break;
 	case Hold:
-		Serial.println("hold:");
-		flag_ChangeGrip = true;
+		// Serial.println("hold:");
+		// flag_ChangeGrip = true;
 		Fingers[1].Flag_threshold = Fingers[2].Flag_threshold = Fingers[3].Flag_threshold = Fingers[4].Flag_threshold = false;
 		break;
 	case Change:
-		Serial.println("Change Grip");
+		// Serial.println("Change Grip");
 			flagChange = true;
-			flag_ChangeGrip = true;
+			// flag_ChangeGrip = true;
 			mode = lastMode;
 			lastMode = Change;
 		break;

@@ -63,6 +63,8 @@ typedef enum {
     SPEED_US_LV1 = 1,
     SPEED_US_LV2 = 2,
     SPEED_US_LV3 = 3,
+    SPEED_US_LV4 = 4,
+    SPEED_US_LV5 = 5,
 }speedUS;
 typedef enum {
 	STATE_NONE 		= 0,
@@ -111,10 +113,10 @@ class HandState
         }StateFinger;
 
         uint16_t StepControl = 0;
-        speedUS stepUs = SPEED_US_LV2;
+        speedUS stepUs = SPEED_US_LV3;
         uint8_t grip = 0;
         bool flagChange = false;
-        bool flag_ChangeGrip = true;
+        // bool flag_ChangeGrip = true;
         int maxUs_Thumbver[3] = {maxUs_Thumbver_Grip0, maxUs_Thumbver_Grip1, maxUs_Thumbver_Grip2};
         int Current_Threshold[3][5] = {
             {-500, -200, -150, -200, -200},

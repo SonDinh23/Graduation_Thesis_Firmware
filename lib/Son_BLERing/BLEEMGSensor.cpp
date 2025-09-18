@@ -32,8 +32,15 @@ void BLEEMGSensor::onNotifySetting(uint8_t _state) {
       EMG_Control emgCtrl = emgSensor.getEMGControl();
       switch (emgCtrl) {
         case EMG_CONTROL_LINE:
-          pCharacteristic->setValue(emgSensor.buffer, SIZE_ONE_PACKET_REV);
+          // pCharacteristic->setValue(emgSensor.buffer, SIZE_ONE_PACKET_REV);
+          pCharacteristic->setValue(emgSensor.bufferNotify, SIZE_ONE_PACKET_REV_NOTIFY);
           pCharacteristic->notify();
+          // Serial.printf("Notify: ");
+          // for (uint8_t i = 0; i < SIZE_ONE_PACKET_REV_NOTIFY; i++)
+          // {
+          //   Serial.printf("0x%02x\t", emgSensor.bufferNotify[i]);
+          // }
+          // Serial.println();
           break;
 
         case EMG_CONTROL_SPIDER:
@@ -56,7 +63,7 @@ void BLEEMGSensor::onReadSetting(BLECharacteristic* pChar) {
   if (stateSetting == stateSet_Default) return;
   const char* s;
   encode(s);
-  // Serial.println(s);
+  Serial.println(strlen(s));
   pChar->setValue(s);
 }
 
@@ -89,20 +96,28 @@ void BLEEMGSensor::encode(const char *&pData) {
       JsonObject valObj = doc["val"].to<JsonObject>();
       valObj["type"] = THRESHOLD_LINE_JSON;
       JsonArray arr = valObj["val"].to<JsonArray>();
-      arr.add(50);
-      arr.add(10);
-      arr.add(20);
-      arr.add(30);
+      arr.add(thresholdLine[0]);
+      arr.add(thresholdLine[1]);
+      arr.add(thresholdLine[2]);
+      arr.add(thresholdLine[3]);
       break;
     }
 
     case stateSet_ThresholdSpider: {
       memcpy(thresholdSpider, emgSensor.getThresholdSpider(), sizeof(thresholdSpider));
-      doc["mode"] = SETTING;
-      doc["type"] = UPDATE;
-      JsonObject valObj = doc["val"].to<JsonObject>();
-      valObj["type"] = THRESHOLD_SPIDER_JSON;
-      JsonArray outer = valObj["val"].to<JsonArray>();
+      // doc["mode"] = SETTING;
+      // doc["type"] = UPDATE;
+      // JsonObject valObj = doc["val"].to<JsonObject>();
+      // valObj["type"] = THRESHOLD_SPIDER_JSON;
+      // JsonArray outer = valObj["val"].to<JsonArray>();
+      // for (int i = 0; i < 4; i++) {
+      //   JsonArray inner = outer.add<JsonArray>(); 
+      //   for (int j = 0; j < 6; j++) {
+      //     inner.add(thresholdSpider[i][j]);
+      //   }
+      // }
+      doc["type"] = THRESHOLD_SPIDER_JSON;
+      JsonArray outer = doc["val"].to<JsonArray>();
       for (int i = 0; i < 4; i++) {
         JsonArray inner = outer.add<JsonArray>(); 
         for (int j = 0; j < 6; j++) {
@@ -158,15 +173,65 @@ void BLEEMGSensor::sendSetting(JsonDocument json) {
     Serial.printf("Threshold BLE: %d, %d, %d, %d\n", thresholdLine[0], thresholdLine[1], thresholdLine[2], thresholdLine[3]);
     emgSensor.setThresholdLine(thresholdLine);
   }else if (memcmp(type, THRESHOLD_SPIDER_JSON, strlen(THRESHOLD_SPIDER_JSON)) == 0) {
+    // const char *s = json["val"]["TH"];
+    // float thresholdNet[6];
+    // uint32_t grip;
+    // vTaskDelay(250);
+    // // Serial.printf("Set Threshold Spider: %s\n", s);
+    // sscanf(s, "%d@%f:%f:%f:%f:%f:%f", &grip, &thresholdNet[0], &thresholdNet[1], &thresholdNet[2], &thresholdNet[3], &thresholdNet[4], &thresholdNet[5]);
+    // Serial.printf("BLE Grip: %d\t", grip);
+    // for (size_t i = 0; i < 6; i++) {
+    //   Serial.printf("%.4f\t", thresholdNet[i]);
+    // }
+    // Serial.println();
+    // emgSensor.setThresholdSpider((uint32_t)grip, thresholdNet);
     const char *s = json["val"]["TH"];
     float thresholdNet[6];
-    uint8_t grip;
-    sscanf(s, "%d@%f:%f:%f:%f:%f:%f", &grip, &thresholdNet[0], &thresholdNet[1], &thresholdNet[2], &thresholdNet[3], &thresholdNet[4], &thresholdNet[5]);
-    Serial.printf("BLE Girp: %d\t", grip);
-    for (size_t i = 0; i < 6; i++) {
-      Serial.printf("%.4f\t", thresholdNet[i]);
+    uint32_t grip;
+
+    // vTaskDelay(250); // ❌ bỏ: dễ treo task nimble_host
+
+    if (!s || !*s)
+    {
+      Serial.println("ERR: TH null/empty");
+      return;
     }
+
+    // parse "grip@f1:f2:f3:f4:f5:f6"
+    char *endp = nullptr;
+    unsigned long g = strtoul(s, &endp, 10);
+    if (endp == s || *endp != '@')
+    {
+      Serial.println("ERR: format grip@...");
+      return;
+    }
+    grip = (uint32_t)g;
+
+    const char *p = endp + 1;
+    for (int i = 0; i < 6; ++i)
+    {
+      thresholdNet[i] = strtof(p, &endp);
+      if (p == endp)
+      {
+        Serial.printf("ERR: float #%d\n", i);
+        return;
+      }
+      if (i < 5)
+      {
+        if (*endp != ':')
+        {
+          Serial.printf("ERR: missing ':' after #%d\n", i);
+          return;
+        }
+        p = endp + 1;
+      }
+    }
+
+    Serial.printf("BLE Grip: %u\t", grip);
+    for (size_t i = 0; i < 6; ++i)
+      Serial.printf("%.4f\t", thresholdNet[i]);
     Serial.println();
+
     emgSensor.setThresholdSpider(grip, thresholdNet);
   }else if (memcmp(type, EMG_CONTROL_JSON, strlen(EMG_CONTROL_JSON)) == 0) {
     uint8_t emgCtrl = json["val"]["state"];

@@ -19,11 +19,11 @@
 #define LIMITVALUEMAX				    40.0
 #define LIMITVALUEMIN				    0.0
 
-#define THRESHOLD_SETUP 			    50
+#define THRESHOLD_SETUP 			    80
 #define THRESHOLD_DC    			    40
-#define THRESHOLD_LOW   			    10
-#define THRESHOLD_HIGH  			    20
-#define THRESHOLD_GRIP  			    30
+#define THRESHOLD_LOW   			    15
+#define THRESHOLD_HIGH  			    35
+#define THRESHOLD_GRIP  			    50
 #define THRESHOLD_MAX   			    1000
 
 #define TIME_READY 					    3000
@@ -50,6 +50,7 @@ enum EMG_Control{
 class EMGSensor {
     public:
         EMGSensor(MCP3208 &_adc, Adafruit_NeoPixel &_pixels, BuzzerMusic &_buzzer);
+		void testSensor();
         bool begin();
 		int8_t sync(bool isStreamBLE = false);
 		void syncLine(bool isStreamBLE = false);
@@ -78,7 +79,6 @@ class EMGSensor {
 		uint8_t bufferNotify[SIZE_ONE_PACKET_REV_NOTIFY];
         uint8_t buffer[SIZE_ONE_PACKET_REV];			
 		float data[CHANELS+1] = {0};  // chanels + timeCycle
-		float dataFilter[CHANELS] = {0};
 
 		Adafruit_NeoPixel* pixels;
 		BuzzerMusic* buzzer;
@@ -96,7 +96,7 @@ class EMGSensor {
 		SimpleKalmanFilter filter3 =  SimpleKalmanFilter(2, 2, 0.01);
 		SimpleKalmanFilter filter4 =  SimpleKalmanFilter(2, 2, 0.01);
 		SimpleKalmanFilter filter5 =  SimpleKalmanFilter(2, 2, 0.01);
-        
+
         EMG_Control emgControl = EMG_CONTROL_SPIDER;
 
 		bool stateReady = false;        // State Ring

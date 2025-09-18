@@ -8,7 +8,7 @@
 #include "BuzzerMusic.h"
 
 #define DEBUG
-#define WDT_TIMEOUT   5
+#define WDT_TIMEOUT   120
 
 #define SPI_CS    	15 		   // SPI slave select
 #define ADC_CLK     8000000  // SPI clock 1.6MHz
@@ -69,7 +69,7 @@ void ReadSensorBLEOP(void* pParamter) {
       ble.sendControl(stateControl);
       lastTimeControl = millis();
     }
-    vTaskDelay(8); 
+    vTaskDelay(5);
   }
 }
 
@@ -79,20 +79,6 @@ void ReadSensorOP(void* pParamter) {
     stateControl = emgSensor.sync(isStreamBLE);
 
     if (millis() - timePrint >= 250) {
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", value[0], value[1], value[2], value[3], value[4], value[5]);
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", outputDC[0], outputDC[1], outputDC[2], outputDC[3], outputDC[4], outputDC[5]);
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", data[0], data[1], data[2], data[3], data[4], data[5]);
-      // Serial.printf("%.2f\t%.2f\t%.2f\n", data[0], data[1], data[2]);
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", filterKalman[0], filterKalman[1], filterKalman[2], filterKalman[3], filterKalman[4], filterKalman[5], data[6]);
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", filterKalman[0], filterKalman[1], filterKalman[2], filterKalman[3], filterKalman[4], filterKalman[5]);
-
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", emgSensor.data[0], emgSensor.data[1], emgSensor.data[2], emgSensor.data[3], emgSensor.data[4], emgSensor.data[5], emgSensor.data[6]);
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", emgSensor.data[0], emgSensor.data[1], emgSensor.data[2], emgSensor.data[3], emgSensor.data[4], emgSensor.data[5]);
-
-      // Serial.printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", valueAbs[0], valueAbs[1], valueAbs[2], valueAbs[3], valueAbs[4], valueAbs[5]);
-
-      // Serial.printf("%.2f\t%.2f\t%.2f\n", valueAbs[0], value[0], filterKalman[0]);
-      // Serial.printf("stateControl: %d\n", stateControl);
       switch (stateControl) {
         case -1:
           emgSensor.setLed(0, 255, 0);
@@ -167,8 +153,8 @@ void RingOP(void* pParamter) {
 }
 
 void setup() {
-  Serial.begin(115200);
-  delay(50);
+  Serial.begin(9600);
+  delay(100);
   Serial.println("Myoband version 0.1");
   gpio_deep_sleep_hold_dis();
 
@@ -186,6 +172,7 @@ void setup() {
   pinMode(PIN_STD_BAT, INPUT_PULLUP);
   
   buzzer.begin();
+  // buzzer.offBuzzer();
 
   pixels.begin();
   pixels.setBrightness(10);
